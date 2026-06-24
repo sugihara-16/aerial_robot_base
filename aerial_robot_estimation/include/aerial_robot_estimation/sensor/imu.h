@@ -41,7 +41,7 @@
 /* ros messages */
 #include <aerial_robot_msgs/msg/states.hpp>
 #include <sensor_msgs/msg/imu.hpp>
-#include <spinal/msg/imu.hpp>
+#include <spinal_msgs/msg/imu.hpp>
 
 
 namespace sensor_plugin {
@@ -56,7 +56,7 @@ namespace sensor_plugin {
     Imu();
 
   protected:
-    rclcpp::Subscription<spinal::msg::Imu>::SharedPtr imu_sub_;
+    rclcpp::Subscription<spinal_msgs::msg::Imu>::SharedPtr imu_sub_;
     rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr  ros_imu_pub_;
     rclcpp::Publisher<aerial_robot_msgs::msg::States>::SharedPtr  state_pub_;
 
@@ -82,7 +82,7 @@ namespace sensor_plugin {
 
     aerial_robot_msgs::msg::States states_; /* for debug */
 
-    virtual void imuCallback(const spinal::msg::Imu::SharedPtr msg);
+    virtual void imuCallback(const spinal_msgs::msg::Imu::SharedPtr msg);
     virtual void estimateProcess() override;
 
     void updateAcc();
@@ -97,7 +97,6 @@ namespace sensor_plugin {
     void rosParamInit() override;
   };
 };
-
 
 
 

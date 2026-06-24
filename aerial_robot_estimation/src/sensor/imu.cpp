@@ -73,7 +73,7 @@ namespace sensor_plugin {
 
     std::string topic_name;
     getParam<string>("imu_topic_name", topic_name, "imu");
-    imu_sub_ = node_->create_subscription<spinal::msg::Imu>
+    imu_sub_ = node_->create_subscription<spinal_msgs::msg::Imu>
       (topic_name, rclcpp::SystemDefaultsQoS(),
        std::bind(&Imu::imuCallback, this, std::placeholders::_1));
 
@@ -86,7 +86,7 @@ namespace sensor_plugin {
       (topic_name, rclcpp::SystemDefaultsQoS());
   }
 
-  void Imu::imuCallback(const spinal::msg::Imu::SharedPtr msg) {
+  void Imu::imuCallback(const spinal_msgs::msg::Imu::SharedPtr msg) {
     // check the validity first
     for(int i = 0; i < 3; i++) {
       if(isnan(msg->acc[i]) || isnan(msg->gyro[i]) || isnan(msg->mag[i])) {
@@ -515,5 +515,4 @@ namespace sensor_plugin {
 /* plugin registration */
 #include <pluginlib/class_list_macros.hpp>
 PLUGINLIB_EXPORT_CLASS(sensor_plugin::Imu, sensor_plugin::SensorBase);
-
 

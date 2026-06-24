@@ -18,6 +18,8 @@ find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(spinal REQUIRED)
+find_package(spinal_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(tf2_eigen_kdl REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 
@@ -35,6 +37,7 @@ set(ROS_DEPENDENCIES
   sensor_msgs
   std_srvs
   spinal
+  spinal_msgs
   tf2_eigen_kdl
   tf2_geometry_msgs
 )
@@ -112,6 +115,7 @@ ament_export_dependencies(
   sensor_msgs
   std_srvs
   spinal
+  spinal_msgs
   tf2_eigen_kdl
   tf2_geometry_msgs
 )
