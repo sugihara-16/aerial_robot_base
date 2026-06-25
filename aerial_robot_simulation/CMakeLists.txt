@@ -109,9 +109,11 @@ ament_target_dependencies(simulation_attitude_controller
   gz_ros2_control
   ignition-gazebo6
   controller_interface
+  spinal
 )
 target_link_libraries(simulation_attitude_controller
   spinal_interface
+  spinal::spinal_flight_control
 )
 
 add_executable(sim_param_server src/sim_param_server.cpp)
