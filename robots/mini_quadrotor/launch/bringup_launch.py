@@ -35,6 +35,7 @@ _ARGS = [
     ("spawn_y",             "0.0",              "Gazebo spawn Y position [m] (sim only)"),
     ("spawn_z",             "0.5",              "Gazebo spawn Z position [m] (sim only)"),
     ("robot_model_rviz",    "rviz_config.rviz", "RViz config filename (resolved inside robot_model pkg/config/)"),
+    ("debug_core",          "false",            "Run aerial_robot_core under gdb", ["true", "false"]),
 ]
 # fmt: on
 
@@ -77,10 +78,12 @@ def generate_launch_description():
     spawn_y = LaunchConfiguration("spawn_y")
     spawn_z = LaunchConfiguration("spawn_z")
     robot_model_rviz = LaunchConfiguration("robot_model_rviz")
+    debug_core = LaunchConfiguration("debug_core")
 
     active_estimation_mode = PythonExpression(
         ["int('", sim_estimation_mode, "') if '", sim, "' == 'true' else int('", estimation_mode, "')"]
     )
+    core_prefix = PythonExpression(["'gdb -ex run --args' if '", debug_core, "' == 'true' else ''"])
 
     # ------------------------------------------------------------------
     # 2.  Derived paths
@@ -114,6 +117,14 @@ def generate_launch_description():
             FindPackageShare(robot_model_pkg),
             "config",
             "NavigationConfig.yaml",
+        ]
+    )
+
+    common_control_param_path = PathJoinSubstitution(
+        [
+            FindPackageShare("aerial_robot_control"),
+            "config",
+            "PID.yaml",
         ]
     )
 
@@ -184,16 +195,23 @@ def generate_launch_description():
         executable="aerial_robot_core_node",
         name="aerial_robot_core",
         namespace=robot_ns,
-        prefix=["gdb -ex run --args"],
+        prefix=core_prefix,
         parameters=[
             {
                 "main_rate": main_rate,
+                "warn_main_rate": ParameterValue(
+                    PythonExpression(["False if '", sim, "' == 'true' else True"]), value_type=bool
+                ),
+                "main_rate_warn_tolerance": ParameterValue(
+                    PythonExpression(["0.5 if '", sim, "' == 'true' else 0.2"]), value_type=float
+                ),
                 "estimation.mode": active_estimation_mode,
                 "use_sim_time": sim,
             },
             robot_description_param,
             robot_model_param_path,
             state_estimation_path,
+            common_control_param_path,
             control_param_path,
             navigation_param_path,
             motor_info_param_path,
