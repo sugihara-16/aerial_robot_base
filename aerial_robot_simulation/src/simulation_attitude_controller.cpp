@@ -99,6 +99,8 @@ controller_interface::InterfaceConfiguration SimulationAttitudeController::state
 
 controller_interface::CallbackReturn SimulationAttitudeController::on_configure(const rclcpp_lifecycle::State &)
 {
+  spinal_iface_.useGroundTruth(true);
+
   thruster_ros_mod_.init(get_node());
   flight_control_ros_mod_.init(
     get_node(),
@@ -137,6 +139,11 @@ controller_interface::return_type SimulationAttitudeController::update(
 
   spinal_iface_.onGround(false);
 
+  const double q_x = state_interfaces_[0].get_value();
+  const double q_y = state_interfaces_[1].get_value();
+  const double q_z = state_interfaces_[2].get_value();
+  const double q_w = state_interfaces_[3].get_value();
+
   const double ang_x = state_interfaces_[4].get_value();
   const double ang_y = state_interfaces_[5].get_value();
   const double ang_z = state_interfaces_[6].get_value();
@@ -151,6 +158,7 @@ controller_interface::return_type SimulationAttitudeController::update(
 
   spinal_iface_.setImuValue(acc_x, acc_y, acc_z, ang_x, ang_y, ang_z);
   spinal_iface_.setMagValue(mag_x, mag_y, mag_z);
+  spinal_iface_.setGroundTruthStates(q_x, q_y, q_z, q_w, ang_x, ang_y, ang_z);
   spinal_iface_.stateEstimate();
 
   flight_control_ros_mod_.update();
