@@ -120,6 +120,9 @@ struct jointData
   /// \brief force to yaw torque conversion rate
   double m_f_rate{ 0.0 };
 
+  /// \brief visual joint speed per thrust force [rad/s/N]
+  double rotor_visual_speed_rate{ 1.0 };
+
   /// \brief Control method defined in the URDF for each joint.
   gz_ros2_control::GazeboSimSystemInterface::ControlMethod joint_control_method{
     gz_ros2_control::GazeboSimSystemInterface::NONE
@@ -334,6 +337,24 @@ bool AerialRobotHwSim::initSim(rclcpp::Node::SharedPtr &model_nh, std::map<std::
     RCLCPP_WARN(this->nh_->get_logger(), "[sim] m_f_rate hardware parameter is not set; yaw drag torque is 0");
   }
 
+  double rotor_visual_speed_rate = 1.0;
+  const auto rotor_visual_speed_rate_it = hardware_info.hardware_parameters.find("rotor_visual_speed_rate");
+  if (rotor_visual_speed_rate_it != hardware_info.hardware_parameters.end())
+  {
+    try
+    {
+      rotor_visual_speed_rate = std::stod(rotor_visual_speed_rate_it->second);
+      RCLCPP_INFO_STREAM(this->nh_->get_logger(), "[sim] Loaded rotor_visual_speed_rate: "
+                                                     << rotor_visual_speed_rate);
+    }
+    catch (const std::exception &)
+    {
+      RCLCPP_WARN_STREAM(this->nh_->get_logger(),
+                         "[sim] Invalid rotor_visual_speed_rate hardware parameter: "
+                             << rotor_visual_speed_rate_it->second);
+    }
+  }
+
   auto find_link_by_name = [&ecm](const std::string &link_name)
   {
     sim::Entity result = sim::kNullEntity;
@@ -386,6 +407,7 @@ bool AerialRobotHwSim::initSim(rclcpp::Node::SharedPtr &model_nh, std::map<std::
       this->dataPtr->joints_[j].rotor_direction = axis_z < 0.0 ? -1.0 : 1.0;
     }
     this->dataPtr->joints_[j].m_f_rate = m_f_rate;
+    this->dataPtr->joints_[j].rotor_visual_speed_rate = rotor_visual_speed_rate;
 
     // Create joint position component if one doesn't exist
     if (!ecm.EntityHasComponentType(simjoint, sim::components::JointPosition().TypeId()))
@@ -1054,6 +1076,20 @@ hardware_interface::return_type AerialRobotHwSim::write(const rclcpp::Time &sim_
       {
         const double thrust = std::max(0.0, this->dataPtr->joints_[i].joint_effort_cmd);
         this->dataPtr->joints_[i].joint_effort = thrust;
+
+        const double visual_speed = thrust * this->dataPtr->joints_[i].rotor_visual_speed_rate;
+        this->dataPtr->joints_[i].joint_velocity_cmd = visual_speed;
+        auto vel = this->dataPtr->ecm->Component<sim::components::JointVelocityCmd>(
+            this->dataPtr->joints_[i].sim_joint);
+        if (vel == nullptr)
+        {
+          this->dataPtr->ecm->CreateComponent(this->dataPtr->joints_[i].sim_joint,
+                                              sim::components::JointVelocityCmd({ visual_speed }));
+        }
+        else if (!vel->Data().empty())
+        {
+          vel->Data()[0] = visual_speed;
+        }
 
         if (this->dataPtr->joints_[i].sim_child_link != sim::kNullEntity)
         {

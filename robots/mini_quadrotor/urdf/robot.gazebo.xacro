@@ -3,6 +3,7 @@
     xmlns:xacro="http://www.ros.org/wiki/xacro" name="mini_quadrotor" >
 
   <xacro:arg name="robot_name" default="mini_quadrotor" />
+  <xacro:arg name="rotor_visual_speed_rate" default="20.0" />
 
   <!-- robot urdf -->
   <xacro:include filename="$(find mini_quadrotor)/urdf/robot.urdf.xacro" />
@@ -25,6 +26,7 @@
     <hardware>
       <plugin>gz_ros2_control/AerialRobotHwSim</plugin>
       <param name="m_f_rate">${m_f_rate}</param>
+      <param name="rotor_visual_speed_rate">$(arg rotor_visual_speed_rate)</param>
     </hardware>
     <joint name="dummy_joint">
       <command_interface name="position">
