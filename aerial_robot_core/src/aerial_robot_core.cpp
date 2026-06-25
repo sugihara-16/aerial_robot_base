@@ -123,8 +123,8 @@ void AerialRobotCore::mainFunc()
     else if (warn_main_rate_ && dt_real > dt_desire)
     {
       RCLCPP_WARN_THROTTLE(node_->get_logger(), steady_clock_, main_rate_warn_throttle_ms_,
-                           "Main loop rate is too low: (ts_real) %f s > (ts_desire incl. %2f%% tol) %f s",
-                           dt_real, main_rate_warn_tolerance_ * 100, dt_desire);
+                           "Main loop rate is too low: (ts_real) %f s > (ts_desire incl. %2f%% tol) %f s", dt_real,
+                           main_rate_warn_tolerance_ * 100, dt_desire);
     }
   }
   last_main_time_ns_ = now_ns;  // In nanosecons

@@ -102,10 +102,8 @@ controller_interface::CallbackReturn SimulationAttitudeController::on_configure(
   spinal_iface_.useGroundTruth(true);
 
   thruster_ros_mod_.init(get_node());
-  flight_control_ros_mod_.init(
-    get_node(),
-    spinal_iface_.getEstimatorPtr()->getEstimator(),
-    thruster_ros_mod_.getThrusterManager());
+  flight_control_ros_mod_.init(get_node(), spinal_iface_.getEstimatorPtr()->getEstimator(),
+                               thruster_ros_mod_.getThrusterManager());
 
   RCLCPP_INFO(get_node()->get_logger(), "[sim] SimulationAttitudeController: on_configure");
   return controller_interface::CallbackReturn::SUCCESS;
@@ -128,9 +126,7 @@ controller_interface::CallbackReturn SimulationAttitudeController::on_deactivate
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-controller_interface::return_type SimulationAttitudeController::update(
-  const rclcpp::Time &,
-  const rclcpp::Duration &)
+controller_interface::return_type SimulationAttitudeController::update(const rclcpp::Time &, const rclcpp::Duration &)
 {
   if (get_state().id() != lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE)
   {
@@ -172,7 +168,7 @@ controller_interface::return_type SimulationAttitudeController::update(
 
 void SimulationAttitudeController::writeRotorCommands_()
 {
-  ThrusterManager* thruster = thruster_ros_mod_.getThrusterManager();
+  ThrusterManager *thruster = thruster_ros_mod_.getThrusterManager();
   const size_t n = std::min(command_interfaces_.size(), static_cast<size_t>(MAX_THRUSTER_NUM));
   for (size_t i = 0; i < n; ++i)
   {

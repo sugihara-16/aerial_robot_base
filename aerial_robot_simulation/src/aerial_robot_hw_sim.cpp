@@ -344,14 +344,12 @@ bool AerialRobotHwSim::initSim(rclcpp::Node::SharedPtr &model_nh, std::map<std::
     try
     {
       rotor_visual_speed_rate = std::stod(rotor_visual_speed_rate_it->second);
-      RCLCPP_INFO_STREAM(this->nh_->get_logger(), "[sim] Loaded rotor_visual_speed_rate: "
-                                                     << rotor_visual_speed_rate);
+      RCLCPP_INFO_STREAM(this->nh_->get_logger(), "[sim] Loaded rotor_visual_speed_rate: " << rotor_visual_speed_rate);
     }
     catch (const std::exception &)
     {
-      RCLCPP_WARN_STREAM(this->nh_->get_logger(),
-                         "[sim] Invalid rotor_visual_speed_rate hardware parameter: "
-                             << rotor_visual_speed_rate_it->second);
+      RCLCPP_WARN_STREAM(this->nh_->get_logger(), "[sim] Invalid rotor_visual_speed_rate hardware parameter: "
+                                                      << rotor_visual_speed_rate_it->second);
     }
   }
 
@@ -586,8 +584,8 @@ bool AerialRobotHwSim::initSim(rclcpp::Node::SharedPtr &model_nh, std::map<std::
         {
           if (this->dataPtr->joints_[j].sim_child_link == sim::kNullEntity)
           {
-            RCLCPP_WARN_STREAM(this->nh_->get_logger(), "[sim] Rotor joint " << joint_name
-                                                                             << " has no child link for thrust");
+            RCLCPP_WARN_STREAM(this->nh_->get_logger(),
+                               "[sim] Rotor joint " << joint_name << " has no child link for thrust");
           }
           else
           {
@@ -1096,9 +1094,8 @@ hardware_interface::return_type AerialRobotHwSim::write(const rclcpp::Time &sim_
           sim::Link rotor_link(this->dataPtr->joints_[i].sim_child_link);
           const auto rotor_pose = sim::worldPose(this->dataPtr->joints_[i].sim_child_link, *this->dataPtr->ecm);
           const auto thrust_axis = rotor_pose.Rot().RotateVector(ignition::math::Vector3d::UnitZ);
-          const auto yaw_drag_torque =
-              thrust_axis * (thrust * this->dataPtr->joints_[i].rotor_direction *
-                             this->dataPtr->joints_[i].m_f_rate);
+          const auto yaw_drag_torque = thrust_axis * (thrust * this->dataPtr->joints_[i].rotor_direction *
+                                                      this->dataPtr->joints_[i].m_f_rate);
 
           if (this->dataPtr->joints_[i].sim_parent_link != sim::kNullEntity)
           {
@@ -1111,8 +1108,7 @@ hardware_interface::return_type AerialRobotHwSim::write(const rclcpp::Time &sim_
           }
           else
           {
-            rotor_link.AddWorldWrench(
-                *this->dataPtr->ecm, thrust_axis * thrust, yaw_drag_torque);
+            rotor_link.AddWorldWrench(*this->dataPtr->ecm, thrust_axis * thrust, yaw_drag_torque);
           }
         }
 
@@ -1151,7 +1147,8 @@ hardware_interface::return_type AerialRobotHwSim::write(const rclcpp::Time &sim_
   for (const auto &rotor_parent_wrench : rotor_parent_wrenches)
   {
     sim::Link parent_link(rotor_parent_wrench.first);
-    parent_link.AddWorldWrench(*this->dataPtr->ecm, rotor_parent_wrench.second.first, rotor_parent_wrench.second.second);
+    parent_link.AddWorldWrench(*this->dataPtr->ecm, rotor_parent_wrench.second.first,
+                               rotor_parent_wrench.second.second);
   }
 
   // Set values of all mimic joints with respect to mimicked joint
