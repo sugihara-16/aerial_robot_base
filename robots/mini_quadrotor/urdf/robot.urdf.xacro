@@ -12,7 +12,8 @@
   <xacro:property name="rotor_z" value="0.026" />
 
   <!-- dynamics -->
-  <m_f_rate value="-0.011" /> <!-- drag torque rate -->
+  <xacro:property name="m_f_rate" value="-0.011" /> <!-- drag torque rate -->
+  <m_f_rate value="${m_f_rate}" />
   <xacro:property name="max_force" value="8.0" /> <!-- [N] -->
   <xacro:property name="min_force" value="0.0" /> <!-- [N] -->
 
