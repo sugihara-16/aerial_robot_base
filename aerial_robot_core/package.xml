@@ -12,10 +12,11 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
   <depend>rclcpp</depend>
   <depend>pluginlib</depend>
+  <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
   <depend>std_srvs</depend>
-  <!-- <depend>mocap_optitrack</depend> -->
   <depend>joy</depend>
+  <exec_depend>rclpy</exec_depend>
   <exec_depend>ros2launch</exec_depend>
   <exec_depend>ros2_numpy</exec_depend>
   <exec_depend>smach</exec_depend>
