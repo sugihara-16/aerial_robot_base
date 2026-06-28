@@ -31,6 +31,16 @@ _ARGS = [
     ("headless",            "true",             "Run without GUI", ["true", "false"]),
     ("sim",                 "false",            "Launch Gazebo simulation", ["true", "false"]),
     ("sim_estimation_mode", "2",                "Estimator mode in simulation: 0=egomotion, 1=experiment, 2=ground-truth", ["0", "1", "2"]),
+    ("launch_spinal",       "true",             "Launch micro-ROS Agent for spinal on real machine", ["true", "false"]),
+    ("launch_spinal_bridge", "true",            "Relay root spinal topics to/from robot namespace", ["true", "false"]),
+    ("spinal_dev",          "/dev/flight_controller", "Serial device for spinal micro-ROS Agent"),
+    ("spinal_baudrate",     "921600",           "Baudrate for spinal micro-ROS Agent"),
+    ("spinal_verbosity",    "4",                "Verbosity for spinal micro-ROS Agent"),
+    ("launch_mocap",        "true",             "Launch OptiTrack mocap receiver on real machine", ["true", "false"]),
+    ("mocap_robot_id",      "1",                "OptiTrack rigid body ID for this robot"),
+    ("mocap_multicast_address", "239.255.42.99", "OptiTrack NatNet multicast address"),
+    ("mocap_data_port",     "1511",             "OptiTrack NatNet data port"),
+    ("mocap_interface_address", "0.0.0.0",      "Local interface address for OptiTrack multicast"),
     ("spawn_x",             "0.0",              "Gazebo spawn X position [m] (sim only)"),
     ("spawn_y",             "0.0",              "Gazebo spawn Y position [m] (sim only)"),
     ("spawn_z",             "0.5",              "Gazebo spawn Z position [m] (sim only)"),
@@ -74,6 +84,16 @@ def generate_launch_description():
     headless = LaunchConfiguration("headless")
     sim = LaunchConfiguration("sim")
     sim_estimation_mode = LaunchConfiguration("sim_estimation_mode")
+    launch_spinal = LaunchConfiguration("launch_spinal")
+    launch_spinal_bridge = LaunchConfiguration("launch_spinal_bridge")
+    spinal_dev = LaunchConfiguration("spinal_dev")
+    spinal_baudrate = LaunchConfiguration("spinal_baudrate")
+    spinal_verbosity = LaunchConfiguration("spinal_verbosity")
+    launch_mocap = LaunchConfiguration("launch_mocap")
+    mocap_robot_id = LaunchConfiguration("mocap_robot_id")
+    mocap_multicast_address = LaunchConfiguration("mocap_multicast_address")
+    mocap_data_port = LaunchConfiguration("mocap_data_port")
+    mocap_interface_address = LaunchConfiguration("mocap_interface_address")
     spawn_x = LaunchConfiguration("spawn_x")
     spawn_y = LaunchConfiguration("spawn_y")
     spawn_z = LaunchConfiguration("spawn_z")
@@ -84,6 +104,7 @@ def generate_launch_description():
         ["int('", sim_estimation_mode, "') if '", sim, "' == 'true' else int('", estimation_mode, "')"]
     )
     core_prefix = PythonExpression(["'gdb -ex run --args' if '", debug_core, "' == 'true' else ''"])
+    real_machine_only = ["'", real_machine, "' == 'true' and '", sim, "' == 'false'"]
 
     # ------------------------------------------------------------------
     # 2.  Derived paths
@@ -205,6 +226,12 @@ def generate_launch_description():
                 "main_rate_warn_tolerance": ParameterValue(
                     PythonExpression(["0.5 if '", sim, "' == 'true' else 0.2"]), value_type=float
                 ),
+                "navigation.require_spinal_ready_for_arm": ParameterValue(
+                    PythonExpression(
+                        real_machine_only + [" and '", launch_spinal_bridge, "' == 'true'"]
+                    ),
+                    value_type=bool,
+                ),
                 "estimation.mode": active_estimation_mode,
                 "use_sim_time": sim,
             },
@@ -248,6 +275,21 @@ def generate_launch_description():
             servo_param_path,
         ],
         condition=IfCondition(sim),
+        output="screen",
+    )
+
+    spinal_namespace_bridge_node = Node(
+        package="spinal",
+        executable="spinal_namespace_bridge",
+        name="spinal_namespace_bridge",
+        parameters=[
+            {
+                "robot_namespace": robot_ns,
+            },
+        ],
+        condition=IfCondition(
+            PythonExpression(real_machine_only + [" and '", launch_spinal_bridge, "' == 'true'"])
+        ),
         output="screen",
     )
 
@@ -300,6 +342,47 @@ def generate_launch_description():
         condition=IfCondition(sim),
     )
 
+    # Real machine: spinal micro-ROS Agent
+    spinal_agent_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution(
+                [
+                    FindPackageShare("spinal"),
+                    "launch",
+                    "agent_launch.py",
+                ]
+            )
+        ),
+        launch_arguments={
+            "dev": spinal_dev,
+            "baudrate": spinal_baudrate,
+            "verbosity": spinal_verbosity,
+        }.items(),
+        condition=IfCondition(PythonExpression(real_machine_only + [" and '", launch_spinal, "' == 'true'"])),
+    )
+
+    # Real machine: OptiTrack mocap receiver
+    mocap_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution(
+                [
+                    FindPackageShare("aerial_robot_core"),
+                    "launch",
+                    "external_module",
+                    "mocap.launch.py",
+                ]
+            )
+        ),
+        launch_arguments={
+            "robot_ns": robot_ns,
+            "robot_id": mocap_robot_id,
+            "multicast_address": mocap_multicast_address,
+            "data_port": mocap_data_port,
+            "interface_address": mocap_interface_address,
+        }.items(),
+        condition=IfCondition(PythonExpression(real_machine_only + [" and '", launch_mocap, "' == 'true'"])),
+    )
+
     # ------------------------------------------------------------------
     # 5.  Assemble LaunchDescription
     # ------------------------------------------------------------------
@@ -312,7 +395,10 @@ def generate_launch_description():
     ld.add_action(core_node)
     ld.add_action(servo_bridge_node)
     ld.add_action(joint_position_spawner)
+    ld.add_action(spinal_namespace_bridge_node)
     ld.add_action(model_launch)
+    ld.add_action(spinal_agent_launch)
+    ld.add_action(mocap_launch)
     ld.add_action(sim_launch)
 
     return ld

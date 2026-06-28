@@ -21,6 +21,7 @@
   <depend>aerial_robot_msgs</depend>
   <depend>aerial_robot_simulation</depend>
   <depend>aerial_robot_core</depend>
+  <exec_depend>spinal</exec_depend>
 
   <!-- Linters -->
   <test_depend>ament_lint_auto</test_depend>
