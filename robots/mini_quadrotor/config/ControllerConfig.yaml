@@ -1,6 +1,6 @@
 /**/aerial_robot_core:
   ros__parameters:
-    aerial_robot_control_name: aerial_robot_control/under_actuated_pid_controller
+    aerial_robot_control_name: aerial_robot_control/under_actuated_lqi_controller
 
     controller:
       uav_model: 0
@@ -12,13 +12,13 @@
 
       # NOTE: Always define parameters as double (5.0) instead of int (5)
       xy:
-        p_gain: 1.0
-        i_gain: 0.0
-        d_gain: 1.5
-        limit_sum: 1.5
-        limit_p: 1.5
-        limit_i: 0.0
-        limit_d: 1.5
+        p_gain: 5.0
+        i_gain: 0.005
+        d_gain: 5.0
+        limit_sum: 10.0
+        limit_p: 5.0
+        limit_i: 1.5
+        limit_d: 3.0
 
       roll_pitch:
         p_gain: 8.0
@@ -29,7 +29,7 @@
         limit_i: 0.0
         limit_d: 2.0
         limit_err_p: 0.6
-        start_integration_height: 0.3
+        start_integration_height: 0.1
 
       z:
         p_gain: 5.0
