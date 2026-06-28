@@ -54,6 +54,7 @@
 #include "aerial_robot_navigation/util/joy_parser.hpp"
 #include "aerial_robot_msgs/msg/flight_nav.hpp"
 #include "spinal_msgs/msg/flight_config_cmd.hpp"
+#include "spinal_msgs/msg/pwms.hpp"
 
 
 namespace aerial_robot_navigation
@@ -209,6 +210,7 @@ protected:
   rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr force_landing_sub_, halt_sub_;
   rclcpp::Subscription<std_msgs::msg::Int8>::SharedPtr ctrl_mode_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_stick_sub_;
+  rclcpp::Subscription<spinal_msgs::msg::Pwms>::SharedPtr motor_pwms_sub_;
 
   std::shared_ptr<aerial_robot_model::RobotModel> robot_model_;
   std::shared_ptr<aerial_robot_estimation::StateEstimator> estimator_;
@@ -247,6 +249,10 @@ protected:
   double xy_convergent_thresh_;
   double land_pos_convergent_thresh_;
   double land_vel_convergent_thresh_;
+  bool require_spinal_ready_for_arm_;
+  bool spinal_ready_seen_;
+  double spinal_ready_timeout_;
+  double last_spinal_msg_time_;
 
   KDL::Vector target_pos_, target_vel_, target_acc_;
   KDL::Vector target_rpy_, target_omega_, target_ang_acc_;
@@ -315,12 +321,14 @@ protected:
   void singleGoalCallback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
   void simpleMoveBaseGoalCallback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
   void batteryCheckCallback(const std_msgs::msg::Float32::ConstSharedPtr msg);
+  void motorPwmsCallback(const spinal_msgs::msg::Pwms::ConstSharedPtr msg);
 
   /* Basic navigation functions */
   virtual void halt() {}  // TODO: Currently does nothing! Remove?
   virtual void reset();
   void startTakeoff();
   void motorArming();
+  bool spinalReadyForArming();
   virtual void updateLandCommand();
 
   void setTargetCogXyFromCurrentState();
