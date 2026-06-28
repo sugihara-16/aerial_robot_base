@@ -173,11 +173,11 @@ void UnderActuatedLQIController::activate()
   if (has_optimal_gain_)
   {
     sendGain();
-    RCLCPP_INFO(node_->get_logger(), "[LQI] Send LQI gains");
+    RCLCPP_INFO_THROTTLE(node_->get_logger(), *(node_->get_clock()), 1000, "[LQI] Send LQI gains");
   }
   else
   {
-    RCLCPP_ERROR(node_->get_logger(), "[LQI] Cannot solve hamilton matrix!");
+    RCLCPP_ERROR_THROTTLE(node_->get_logger(), *(node_->get_clock()), 1000, "[LQI] Cannot solve hamilton matrix!");
   }
 }
 
