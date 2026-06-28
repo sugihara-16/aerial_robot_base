@@ -227,9 +227,7 @@ def generate_launch_description():
                     PythonExpression(["0.5 if '", sim, "' == 'true' else 0.2"]), value_type=float
                 ),
                 "navigation.require_spinal_ready_for_arm": ParameterValue(
-                    PythonExpression(
-                        real_machine_only + [" and '", launch_spinal_bridge, "' == 'true'"]
-                    ),
+                    PythonExpression(real_machine_only + [" and '", launch_spinal_bridge, "' == 'true'"]),
                     value_type=bool,
                 ),
                 "estimation.mode": active_estimation_mode,
@@ -287,9 +285,7 @@ def generate_launch_description():
                 "robot_namespace": robot_ns,
             },
         ],
-        condition=IfCondition(
-            PythonExpression(real_machine_only + [" and '", launch_spinal_bridge, "' == 'true'"])
-        ),
+        condition=IfCondition(PythonExpression(real_machine_only + [" and '", launch_spinal_bridge, "' == 'true'"])),
         output="screen",
     )
 

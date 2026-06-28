@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026, DRAGON Laboratory, The University of Tokyo
-
 import math
 import select
 import socket
@@ -145,7 +144,7 @@ class OptiTrackMocapNode(Node):
     def parse_natnet3_rigid_bodies(self, data):
         parser = NatNetFrameParser(data)
         parser.seek(4)
-        parser.skip(4)  # frame number
+        parser.skip(4)  # Frame number
 
         marker_set_count = parser.read("i")
         for _ in range(marker_set_count):
@@ -166,7 +165,7 @@ class OptiTrackMocapNode(Node):
         if parser.remaining() >= 4:
             skeleton_count = parser.read("i")
             for _ in range(skeleton_count):
-                parser.skip(4)  # skeleton id
+                parser.skip(4)  # Skeleton id
                 skeleton_rigid_body_count = parser.read("i")
                 for _ in range(skeleton_rigid_body_count):
                     pose = self.read_rigid_body(parser)
@@ -186,9 +185,9 @@ class OptiTrackMocapNode(Node):
         parser.skip(marker_count * 4)
         parser.skip(marker_count * 4)
         if parser.remaining() >= 4:
-            parser.skip(4)  # mean marker error
+            parser.skip(4)  # Mean marker error
         if parser.remaining() >= 2:
-            parser.skip(2)  # tracking params
+            parser.skip(2)  # Tracking params
 
         if rigid_body_id != self.robot_id:
             return None
