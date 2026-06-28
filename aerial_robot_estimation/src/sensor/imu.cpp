@@ -116,7 +116,7 @@ void Imu::imuCallback(const spinal_msgs::msg::Imu::SharedPtr msg)
   raw_rot_ = aerial_robot_model::msgToKdl(q);
 
   /* Main process */
-  time_stamp_ = msg->stamp;
+  time_stamp_ = use_msg_stamp_ ? rclcpp::Time(msg->stamp) : node_->get_clock()->now();
   estimateProcess();
   prev_time_stamp_ = time_stamp_;
 }
@@ -526,6 +526,7 @@ void Imu::publish()
 
 void Imu::rosParamInit()
 {
+  getParam<bool>("use_msg_stamp", use_msg_stamp_, true);
   getParam<double>("level_acc_noise_sigma", level_acc_noise_sigma_, 0.01);
   getParam<double>("z_acc_noise_sigma", z_acc_noise_sigma_, 0.01);
   getParam<double>("level_acc_bias_noise_sigma", level_acc_bias_noise_sigma_, 0.01);

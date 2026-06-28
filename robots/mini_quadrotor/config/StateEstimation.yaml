@@ -47,6 +47,7 @@
         sensor_plugin:
           imu:
             estimate_mode: 3 # 1<<0 + 1<<1
+            use_msg_stamp: false # spinal IMU stamps are MCU uptime; use ROS receive time for TF/RViz consistency.
             level_acc_noise_sigma: 0.05
             z_acc_noise_sigma: 0.05
             level_acc_bias_noise_sigma: 0.001
