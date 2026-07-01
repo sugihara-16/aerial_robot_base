@@ -80,6 +80,7 @@ private:
   std::shared_ptr<aerial_robot_estimation::StateEstimator> estimator_;
 
   // Navigator
+  pluginlib::ClassLoader<aerial_robot_navigation::NavigationBase> navigation_loader_;
   std::shared_ptr<aerial_robot_navigation::NavigationBase> navigator_;
 
   // Controller

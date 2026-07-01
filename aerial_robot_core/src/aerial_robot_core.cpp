@@ -38,7 +38,9 @@ using namespace std::chrono_literals;
 
 
 AerialRobotCore::AerialRobotCore(rclcpp::Node::SharedPtr node)
-  : node_(node), controller_loader_("aerial_robot_control", "aerial_robot_control::ControlBase")
+  : node_(node),
+    navigation_loader_("aerial_robot_navigation", "aerial_robot_navigation::NavigationBase"),
+    controller_loader_("aerial_robot_control", "aerial_robot_control::ControlBase")
 {
   // Get parameters from launch file
   node_->get_parameter_or("param_verbose", param_verbose_, false);
@@ -82,7 +84,24 @@ AerialRobotCore::AerialRobotCore(rclcpp::Node::SharedPtr node)
   estimator_->initialize(node_, robot_model);
 
   /* Navigation */
-  navigator_ = std::make_shared<aerial_robot_navigation::NavigationBase>();
+  std::string flight_navigation_plugin_name;
+  node_->get_parameter_or("flight_navigation_plugin_name", flight_navigation_plugin_name, std::string(""));
+  if (!flight_navigation_plugin_name.empty())
+  {
+    try
+    {
+      navigator_ = navigation_loader_.createSharedInstance(flight_navigation_plugin_name);
+    }
+    catch (pluginlib::PluginlibException &ex)
+    {
+      RCLCPP_ERROR(node_->get_logger(), "The navigation plugin failed to load. Error: %s", ex.what());
+      navigator_ = std::make_shared<aerial_robot_navigation::NavigationBase>();
+    }
+  }
+  else
+  {
+    navigator_ = std::make_shared<aerial_robot_navigation::NavigationBase>();
+  }
   navigator_->initialize(node_, robot_model, estimator_, main_dt);
 
   /* Controller */
