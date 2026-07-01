@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>gimbalrotor</name>
+  <version>0.1.0</version>
+  <description>ROS 2 model, launch, and plugins for gimbalrotor robots.</description>
+
+  <maintainer email="chou@jsk.imi.i.u-tokyo.ac.jp">Bakui Chou</maintainer>
+  <license>BSD-3-Clause</license>
+  <url type="website">https://github.com/jsk-ros-pkg/jsk_aerial_robot</url>
+  <author email="j-sugihara@jsk.imi.i.u-tokyo.ac.jp">Junichiro Sugihara</author>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>pluginlib</depend>
+  <depend>angles</depend>
+  <depend>tf2</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>aerial_robot_control</depend>
+  <depend>aerial_robot_estimation</depend>
+  <depend>aerial_robot_model</depend>
+  <depend>aerial_robot_navigation</depend>
+  <depend>aerial_robot_msgs</depend>
+  <depend>aerial_robot_simulation</depend>
+  <depend>spinal</depend>
+  <depend>spinal_msgs</depend>
+
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>aerial_robot_core</exec_depend>
+  <exec_depend>controller_manager</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>joint_state_publisher_gui</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_cmake_cppcheck</test_depend>
+  <test_depend>ament_cmake_lint_cmake</test_depend>
+  <test_depend>ament_cmake_xmllint</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
