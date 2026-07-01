@@ -29,6 +29,12 @@ h:  Halt (force stop motors)
      a           s           d           ]
 (move left)  (backward) (move right) (move down)
 
+     u           i
+(+roll)     (+pitch)
+
+     j           k
+(-roll)     (-pitch)
+
 x:  send task-start command
 
 Avoid caps-lock.
@@ -61,11 +67,13 @@ class KeyboardCommandNode(Node):
         self.declare_parameter("xy_vel", 0.2)
         self.declare_parameter("z_vel", 0.2)
         self.declare_parameter("yaw_vel", 0.2)
+        self.declare_parameter("rp_vel", 0.1)
 
         robot_ns = self.get_parameter("robot_ns").get_parameter_value().string_value
         self.xy_vel = self.get_parameter("xy_vel").get_parameter_value().double_value
         self.z_vel = self.get_parameter("z_vel").get_parameter_value().double_value
         self.yaw_vel = self.get_parameter("yaw_vel").get_parameter_value().double_value
+        self.rp_vel = self.get_parameter("rp_vel").get_parameter_value().double_value
 
         # If robot_ns is not specified as CLI argument, parse the namespace from core node name
         if not robot_ns:
@@ -106,7 +114,7 @@ class KeyboardCommandNode(Node):
             elif key == "x":
                 self.motion_start_pub.publish(Empty())
                 msg_text = "Sent task-start command"
-            elif key in ("w", "s", "a", "d", "q", "e", "[", "]"):
+            elif key in ("w", "s", "a", "d", "q", "e", "[", "]", "u", "j", "i", "k"):
                 nav_msg = FlightNav()
                 nav_msg.control_frame = FlightNav.WORLD_FRAME
                 nav_msg.target = FlightNav.COG
@@ -143,6 +151,22 @@ class KeyboardCommandNode(Node):
                     nav_msg.pos_z_nav_mode = FlightNav.VEL_MODE
                     nav_msg.target_vel_z = -self.z_vel
                     msg_text = "Sent -z vel command"
+                elif key == "u":
+                    nav_msg.roll_nav_mode = FlightNav.VEL_MODE
+                    nav_msg.target_omega_x = self.rp_vel
+                    msg_text = "Sent +roll vel command"
+                elif key == "j":
+                    nav_msg.roll_nav_mode = FlightNav.VEL_MODE
+                    nav_msg.target_omega_x = -self.rp_vel
+                    msg_text = "Sent -roll vel command"
+                elif key == "i":
+                    nav_msg.pitch_nav_mode = FlightNav.VEL_MODE
+                    nav_msg.target_omega_y = self.rp_vel
+                    msg_text = "Sent +pitch vel command"
+                elif key == "k":
+                    nav_msg.pitch_nav_mode = FlightNav.VEL_MODE
+                    nav_msg.target_omega_y = -self.rp_vel
+                    msg_text = "Sent -pitch vel command"
 
                 self.nav_pub.publish(nav_msg)
 
