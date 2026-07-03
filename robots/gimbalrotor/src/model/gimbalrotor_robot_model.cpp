@@ -39,8 +39,8 @@
 void GimbalrotorRobotModel::initialize(rclcpp::Node::SharedPtr node, bool init_with_rosparam, bool verbose,
                                        bool fixed_model, double fc_f_min_thre, double fc_t_min_thre, double epsilon)
 {
-  (void)fixed_model;
-  aerial_robot_model::RobotModel::initialize(std::move(node), init_with_rosparam, verbose, false, fc_f_min_thre,
+  node->get_parameter_or("robot_model_fixed", fixed_model, fixed_model);
+  aerial_robot_model::RobotModel::initialize(std::move(node), init_with_rosparam, verbose, fixed_model, fc_f_min_thre,
                                              fc_t_min_thre, epsilon);
 
   const int rotor_num = getRotorNum();
