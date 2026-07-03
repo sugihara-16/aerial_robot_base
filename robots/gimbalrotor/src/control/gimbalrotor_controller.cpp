@@ -254,6 +254,11 @@ void GimbalrotorController::controlCore()
     navigator_->setTargetCogRoll(target_roll_);
     navigator_->setTargetCogPitch(target_pitch_);
   }
+  else
+  {
+    target_roll_ = target_rpy_.x();
+    target_pitch_ = target_rpy_.y();
+  }
 
   double max_yaw_scale = 0.0;
   last_col = 0;
