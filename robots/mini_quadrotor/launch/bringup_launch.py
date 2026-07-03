@@ -29,7 +29,8 @@ _ARGS = [
     ("estimation_mode",     "0",                "Estimator mode on real machine: 0=egomotion, 1=experiment, 2=ground-truth", ["0", "1", "2"]),
     ("model_options",       "",                 "Extra xacro arguments passed verbatim to xacro"),
     ("headless",            "true",             "Run without GUI", ["true", "false"]),
-    ("sim",                 "false",            "Launch Gazebo simulation", ["true", "false"]),
+    ("sim",                 "false",            "Launch simulation", ["true", "false"]),
+    ("simulator",           "gazebo",           "Simulator backend used when sim:=true", ["gazebo", "mujoco"]),
     ("sim_estimation_mode", "2",                "Estimator mode in simulation: 0=egomotion, 1=experiment, 2=ground-truth", ["0", "1", "2"]),
     ("launch_spinal",       "true",             "Launch micro-ROS Agent for spinal on real machine", ["true", "false"]),
     ("launch_spinal_bridge", "true",            "Relay root spinal topics to/from robot namespace", ["true", "false"]),
@@ -41,9 +42,12 @@ _ARGS = [
     ("mocap_multicast_address", "239.255.42.99", "OptiTrack NatNet multicast address"),
     ("mocap_data_port",     "1511",             "OptiTrack NatNet data port"),
     ("mocap_interface_address", "0.0.0.0",      "Local interface address for OptiTrack multicast"),
-    ("spawn_x",             "0.0",              "Gazebo spawn X position [m] (sim only)"),
-    ("spawn_y",             "0.0",              "Gazebo spawn Y position [m] (sim only)"),
-    ("spawn_z",             "0.5",              "Gazebo spawn Z position [m] (sim only)"),
+    ("spawn_x",             "0.0",              "Simulation spawn X position [m] (sim only)"),
+    ("spawn_y",             "0.0",              "Simulation spawn Y position [m] (sim only)"),
+    ("spawn_z",             "0.5",              "Simulation spawn Z position [m] (sim only)"),
+    ("mujoco_spawn_z",      "0.0",              "MuJoCo spawn Z position [m] (sim only)"),
+    ("mujoco_model",        "",                 "MuJoCo MJCF/XML model path. Empty or missing path generates XML from URDF/Xacro"),
+    ("viewer_font_scale",   "100",              "MuJoCo viewer UI font scale percent; set 0 to keep MuJoCo default"),
     ("robot_model_rviz",    "rviz_config.rviz", "RViz config filename (resolved inside robot_model pkg/config/)"),
     ("debug_core",          "false",            "Run aerial_robot_core under gdb", ["true", "false"]),
 ]
@@ -83,6 +87,7 @@ def generate_launch_description():
     model_options = LaunchConfiguration("model_options")
     headless = LaunchConfiguration("headless")
     sim = LaunchConfiguration("sim")
+    simulator = LaunchConfiguration("simulator")
     sim_estimation_mode = LaunchConfiguration("sim_estimation_mode")
     launch_spinal = LaunchConfiguration("launch_spinal")
     launch_spinal_bridge = LaunchConfiguration("launch_spinal_bridge")
@@ -97,8 +102,14 @@ def generate_launch_description():
     spawn_x = LaunchConfiguration("spawn_x")
     spawn_y = LaunchConfiguration("spawn_y")
     spawn_z = LaunchConfiguration("spawn_z")
+    mujoco_spawn_z = LaunchConfiguration("mujoco_spawn_z")
+    mujoco_model = LaunchConfiguration("mujoco_model")
+    viewer_font_scale = LaunchConfiguration("viewer_font_scale")
     robot_model_rviz = LaunchConfiguration("robot_model_rviz")
     debug_core = LaunchConfiguration("debug_core")
+
+    sim_is_gazebo = PythonExpression(["('", sim, "' == 'true') and ('", simulator, "' == 'gazebo')"])
+    sim_is_mujoco = PythonExpression(["('", sim, "' == 'true') and ('", simulator, "' == 'mujoco')"])
 
     active_estimation_mode = PythonExpression(
         ["int('", sim_estimation_mode, "') if '", sim, "' == 'true' else int('", estimation_mode, "')"]
@@ -173,7 +184,9 @@ def generate_launch_description():
         ]
     )
 
-    xacro_filename = PythonExpression(["'robot.gazebo.xacro' if '", sim, "' == 'true' else 'robot.urdf.xacro'"])
+    xacro_filename = PythonExpression(
+        ["'robot.gazebo.xacro' if ('", sim, "' == 'true' and '", simulator, "' == 'gazebo') else 'robot.urdf.xacro'"]
+    )
 
     xacro_path = PathJoinSubstitution(
         [
@@ -231,6 +244,7 @@ def generate_launch_description():
                     value_type=bool,
                 ),
                 "estimation.mode": active_estimation_mode,
+                "robot_model_fixed": ParameterValue(sim_is_mujoco, value_type=bool),
                 "use_sim_time": sim,
             },
             robot_description_param,
@@ -255,6 +269,7 @@ def generate_launch_description():
             servo_param_path,
             {
                 "sim": sim,
+                "use_mujoco": ParameterValue(sim_is_mujoco, value_type=bool),
             },
         ],
         output="screen",
@@ -272,7 +287,7 @@ def generate_launch_description():
             "--param-file",
             servo_param_path,
         ],
-        condition=IfCondition(sim),
+        condition=IfCondition(sim_is_gazebo),
         output="screen",
     )
 
@@ -316,8 +331,7 @@ def generate_launch_description():
         }.items(),
     )
 
-    # Gazebo simulation
-    sim_launch = IncludeLaunchDescription(
+    gazebo_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
                 [
@@ -335,7 +349,32 @@ def generate_launch_description():
             "spawn_y": spawn_y,
             "spawn_z": spawn_z,
         }.items(),
-        condition=IfCondition(sim),
+        condition=IfCondition(sim_is_gazebo),
+    )
+
+    mujoco_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution(
+                [
+                    FindPackageShare("aerial_robot_simulation"),
+                    "launch",
+                    "mujoco_launch.py",
+                ]
+            )
+        ),
+        launch_arguments={
+            "robot_ns": robot_ns,
+            "headless": headless,
+            "mujoco_model": mujoco_model,
+            "mujoco_urdf_xacro": xacro_path,
+            "mujoco_xacro_options": model_options,
+            "viewer_font_scale": viewer_font_scale,
+            "sim_param_path": sim_param_path,
+            "spawn_x": spawn_x,
+            "spawn_y": spawn_y,
+            "spawn_z": mujoco_spawn_z,
+        }.items(),
+        condition=IfCondition(sim_is_mujoco),
     )
 
     # Real machine: spinal micro-ROS Agent
@@ -395,6 +434,7 @@ def generate_launch_description():
     ld.add_action(model_launch)
     ld.add_action(spinal_agent_launch)
     ld.add_action(mocap_launch)
-    ld.add_action(sim_launch)
+    ld.add_action(gazebo_launch)
+    ld.add_action(mujoco_launch)
 
     return ld
