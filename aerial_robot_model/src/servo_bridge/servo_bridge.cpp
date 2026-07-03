@@ -80,6 +80,7 @@ ServoBridge::ServoBridge(rclcpp::Node::SharedPtr node) : node_(node)
   {
     groups.insert(groups.begin(), "common");
   }
+  const auto servo_command_qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
 
   // 4) Pergroup setup
   for (const auto &group : groups)
@@ -200,7 +201,7 @@ ServoBridge::ServoBridge(rclcpp::Node::SharedPtr node) : node_(node)
 
     servo_ctrl_subs_.insert(
         std::make_pair(group, node_->create_subscription<sensor_msgs::msg::JointState>(
-                                  group + "_ctrl", rclcpp::SystemDefaultsQoS(),
+                                  group + "_ctrl", servo_command_qos,
                                   [this, group](const sensor_msgs::msg::JointState::ConstSharedPtr msg)
                                   { this->servoCtrlCallback(msg, group); })));
     if (simulation_mode_ && group != "common")
@@ -246,7 +247,7 @@ ServoBridge::ServoBridge(rclcpp::Node::SharedPtr node) : node_(node)
   }
   // 6) mujoco output
   mujoco_control_input_pub_ = node_->create_publisher<sensor_msgs::msg::JointState>("mujoco/ctrl_input",
-                                                                                    rclcpp::SystemDefaultsQoS());
+                                                                                    servo_command_qos);
   // 7) joint_profile output
   joint_profile_pub_ = node_->create_publisher<spinal_msgs::msg::JointProfiles>("joint_profiles",
                                                                                 rclcpp::SystemDefaultsQoS());
@@ -419,6 +420,19 @@ void ServoBridge::servoCtrlCallback(const sensor_msgs::msg::JointState::ConstSha
     }
   }
 
+  if (use_mujoco_ && !mujoco_msg.name.empty())
+  {
+    const auto wait_start = std::chrono::steady_clock::now();
+    while (rclcpp::ok() && mujoco_control_input_pub_->get_subscription_count() == 0 &&
+           std::chrono::steady_clock::now() - wait_start < 1s)
+    {
+      rclcpp::sleep_for(10ms);
+    }
+    if (mujoco_control_input_pub_->get_subscription_count() == 0)
+    {
+      RCLCPP_WARN(node_->get_logger(), "[model] No subscriber for mujoco/ctrl_input; joint command may be dropped");
+    }
+  }
   mujoco_control_input_pub_->publish(mujoco_msg);
   auto &pos_pub = servo_target_pos_pubs_.count(servo_group_name) ? servo_target_pos_pubs_[servo_group_name] :
                                                                    servo_target_pos_pubs_["common"];
