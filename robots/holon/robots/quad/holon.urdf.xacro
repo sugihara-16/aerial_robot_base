@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<robot
+    xmlns:xacro="http://www.ros.org/wiki/xacro" name="holon" >
+
+  <xacro:include filename="$(find holon)/urdf/quad/holon.urdf.xacro" />
+  <xacro:include filename="$(find holon)/urdf/quad/common.xacro" />
+
+  <xacro:holon_airframe/>
+
+</robot>

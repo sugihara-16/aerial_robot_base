@@ -1,0 +1,83 @@
+/**/servo_bridge:
+  ros__parameters:
+    servo_controller:
+      groups:
+        - gimbals
+        - joints
+      gimbals:
+        angle_sgn: -1
+        angle_scale: 0.001534
+        zero_point_offset: 2047
+        no_real_state: false
+        state_sub_topic: ""
+        pos_pub_topic: ""
+        torque_pub_topic: ""
+        servo_enable_pub_topic: ""
+        simulation:
+          type: joint_group_position_controller_gimbals
+        names:
+          - gimbal1
+          - gimbal2
+          - gimbal3
+          - gimbal4
+        gimbal1:
+          id: 0
+          init_value: 0.0
+        gimbal2:
+          id: 1
+          init_value: 0.0
+        gimbal3:
+          id: 2
+          init_value: 0.0
+        gimbal4:
+          id: 3
+          init_value: 0.0
+      joints:
+        angle_sgn: -1
+        angle_scale: 0.001534
+        zero_point_offset: 2047
+        no_real_state: false
+        state_sub_topic: ""
+        pos_pub_topic: ""
+        torque_pub_topic: ""
+        servo_enable_pub_topic: ""
+        simulation:
+          type: joint_group_position_controller_joints
+        names:
+          - pitch_dock_mech_joint1
+          - yaw_dock_mech_joint1
+          - yaw_dock_mech_joint2
+          - pitch_dock_mech_joint2
+        pitch_dock_mech_joint1:
+          id: 4
+          angle_sgn: 1
+          init_value: 0.0
+        yaw_dock_mech_joint1:
+          id: 5
+          angle_sgn: 1
+          init_value: 0.0
+        yaw_dock_mech_joint2:
+          id: 6
+          angle_sgn: 1
+          init_value: 0.0
+        pitch_dock_mech_joint2:
+          id: 7
+          angle_sgn: 1
+          init_value: 0.0
+
+
+/**/joint_group_position_controller_gimbals:
+  ros__parameters:
+    joints:
+      - gimbal1
+      - gimbal2
+      - gimbal3
+      - gimbal4
+
+/**/joint_group_position_controller_joints:
+  ros__parameters:
+    joints:
+      - pitch_dock_mech_joint1
+      - yaw_dock_mech_joint1
+      - yaw_dock_mech_joint2
+      - pitch_dock_mech_joint2

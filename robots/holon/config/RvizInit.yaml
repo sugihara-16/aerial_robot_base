@@ -1,0 +1,15 @@
+/**/joint_state_publisher_gui:
+  ros__parameters:
+    zeros:
+      gimbal1: 0.0
+      gimbal2: 0.0
+      gimbal3: 0.0
+      gimbal4: 0.0
+      gimbal1_roll: 0.0
+      gimbal1_pitch: 0.0
+      gimbal2_roll: 0.0
+      gimbal2_pitch: 0.0
+      gimbal3_roll: 0.0
+      gimbal3_pitch: 0.0
+      head_joint: 0.0
+      tail_joint: 0.0
