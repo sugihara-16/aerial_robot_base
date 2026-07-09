@@ -59,6 +59,7 @@ install(PROGRAMS
   scripts/rms.py
   scripts/send_igmp_report.py
   scripts/flight_demo.py
+  scripts/optitrack_mocap_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

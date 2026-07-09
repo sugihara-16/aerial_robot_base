@@ -63,6 +63,7 @@ protected:
   int calib_count_, calib_max_count_;
   double calib_time_;
   double sensor_dt_; /* Sensor internal */
+  bool use_msg_stamp_;
 
 
   /* Reconfigurable variable */

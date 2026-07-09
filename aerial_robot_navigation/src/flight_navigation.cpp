@@ -33,6 +33,8 @@
  */
 #include "aerial_robot_navigation/flight_navigation.hpp"
 
+#include <sstream>
+
 namespace aerial_robot_navigation
 {
 static const rclcpp::Logger NAV_LOGGER = rclcpp::get_logger("Navigation");
@@ -61,7 +63,11 @@ NavigationBase::NavigationBase()
     joy_stick_prev_time_(0),
     teleop_flag_(true),
     force_landing_flag_(false),
-    land_check_start_time_(0)
+    land_check_start_time_(0),
+    require_spinal_ready_for_arm_(false),
+    spinal_ready_seen_(false),
+    spinal_ready_timeout_(1.0),
+    last_spinal_msg_time_(0.0)
 {
   setNaviState(ARM_OFF_STATE);
 }
@@ -87,6 +93,9 @@ void NavigationBase::initialize(rclcpp::Node::SharedPtr node,
   battery_sub_ = node_->create_subscription<std_msgs::msg::Float32>(
       "battery_voltage_status", rclcpp::SystemDefaultsQoS(),
       std::bind(&NavigationBase::batteryCheckCallback, this, std::placeholders::_1));
+  motor_pwms_sub_ = node_->create_subscription<spinal_msgs::msg::Pwms>(
+      "motor_pwms", rclcpp::SensorDataQoS(),
+      std::bind(&NavigationBase::motorPwmsCallback, this, std::placeholders::_1));
 
   // Teleoperation commands
   takeoff_sub_ = node_->create_subscription<std_msgs::msg::Empty>(
@@ -429,6 +438,13 @@ void NavigationBase::rosParamInit()
   getParam<double>("xy_convergent_thresh", xy_convergent_thresh_, 0.15);
   getParam<double>("land_pos_convergent_thresh", land_pos_convergent_thresh_, 0.02);
   getParam<double>("land_vel_convergent_thresh", land_vel_convergent_thresh_, 0.05);
+  getParam<bool>("require_spinal_ready_for_arm", require_spinal_ready_for_arm_, false);
+  getParam<double>("spinal_ready_timeout", spinal_ready_timeout_, 1.0);
+  if (spinal_ready_timeout_ <= 0.0)
+  {
+    RCLCPP_WARN(NAV_LOGGER, "spinal_ready_timeout (current value: %f) should be positive", spinal_ready_timeout_);
+    spinal_ready_timeout_ = 1.0;
+  }
 
   // Teleop navigation
   getParam<double>("max_teleop_xy_vel", max_teleop_xy_vel_, 0.5);
@@ -873,6 +889,13 @@ void NavigationBase::flightStatusAckCallback(std_msgs::msg::UInt8::ConstSharedPt
 
 void NavigationBase::motorArming()
 {
+  if (!spinalReadyForArming())
+  {
+    RCLCPP_WARN_THROTTLE(NAV_LOGGER, *(node_->get_clock()), 1000,
+                         "Spinal link is not ready yet. Ignore arming command.");
+    return;
+  }
+
   /* Z(altitude) */
   /* Check whether there is the fusion for the altitude */
   if (!estimator_->getBasePosStateStatus(State::Z, estimate_mode_))
@@ -911,10 +934,21 @@ void NavigationBase::motorArming()
 
   RCLCPP_INFO_STREAM(NAV_LOGGER,
                      "Init height for takeoff: " << init_height_ << ", target height: " << getTargetCogPos().z());
-  RCLCPP_INFO_STREAM(NAV_LOGGER, "Target xy pos: "
-                                     << "[" << getTargetCogPos().x() << ", " << getTargetCogPos().y() << "]");
+  std::ostringstream target_xy_stream;
+  target_xy_stream << "Target xy pos: [" << getTargetCogPos().x() << ", " << getTargetCogPos().y() << "]";
+  RCLCPP_INFO_STREAM(NAV_LOGGER, target_xy_stream.str());
 
   RCLCPP_INFO(NAV_LOGGER, "Start state!");
+}
+
+bool NavigationBase::spinalReadyForArming()
+{
+  if (!require_spinal_ready_for_arm_) return true;
+  if (!flight_config_pub_ || flight_config_pub_->get_subscription_count() == 0) return false;
+  if (!spinal_ready_seen_) return false;
+
+  const double now = node_->get_clock()->now().seconds();
+  return now - last_spinal_msg_time_ <= spinal_ready_timeout_;
 }
 
 void NavigationBase::startTakeoff()
@@ -965,7 +999,11 @@ void NavigationBase::haltCallback(const std_msgs::msg::Empty::ConstSharedPtr msg
 {
   if (!teleop_flag_) return;
 
-  force_landing_flag_ = true;
+  spinal_msgs::msg::FlightConfigCmd flight_config_cmd;
+  flight_config_cmd.cmd = spinal_msgs::msg::FlightConfigCmd::ARM_OFF_CMD;
+  flight_config_pub_->publish(flight_config_cmd);
+
+  force_landing_flag_ = false;
   setNaviState(STOP_STATE);
 
   RCLCPP_INFO(NAV_LOGGER, "Halt state!");
@@ -1069,7 +1107,7 @@ void NavigationBase::batteryCheckCallback(const std_msgs::msg::Float32::ConstSha
   if (rate < 0)
   {
     /* Can remove this information */
-    RCLCPP_WARN(NAV_LOGGER, "No correct voltage information from spinal");
+    RCLCPP_WARN_THROTTLE(NAV_LOGGER, *(node_->get_clock()), 5000, "No correct voltage information from spinal");
     return;
   }
 
@@ -1091,6 +1129,13 @@ void NavigationBase::batteryCheckCallback(const std_msgs::msg::Float32::ConstSha
   {
     high_voltage_flag_ = false;
   }
+}
+
+void NavigationBase::motorPwmsCallback(const spinal_msgs::msg::Pwms::ConstSharedPtr msg)
+{
+  (void)msg;
+  spinal_ready_seen_ = true;
+  last_spinal_msg_time_ = node_->get_clock()->now().seconds();
 }
 
 void NavigationBase::reset()
@@ -1211,13 +1256,14 @@ void NavigationBase::generateNewTrajectory(std::vector<geometry_msgs::msg::PoseS
 
   agi::QuadState end_state = states.back();
   double dur = end_state.t - start_state.t;
-  RCLCPP_INFO_STREAM(NAV_LOGGER,
-                     "Receive the new target pose of "
-                         << end_state.p.transpose() << " (yaw: " << end_state.getYaw() << ")"
-                         << " which starts with the last target pose: " << start_state.p.transpose()
-                         << " (yaw: " << start_state.getYaw() << ")"
-                         << " and target vel: " << start_state.v.transpose() << " (omega z: " << start_state.w(2) << ")"
-                         << " and target acc: " << start_state.a.transpose() << " and flight duration: " << dur);
+  std::ostringstream trajectory_stream;
+  trajectory_stream
+      << "Receive the new target pose of " << end_state.p.transpose() << " (yaw: " << end_state.getYaw() << ")"
+      << " which starts with the last target pose: " << start_state.p.transpose() << " (yaw: " << start_state.getYaw()
+      << ")"
+      << " and target vel: " << start_state.v.transpose() << " (omega z: " << start_state.w(2) << ")"
+      << " and target acc: " << start_state.a.transpose() << " and flight duration: " << dur;
+  RCLCPP_INFO_STREAM(NAV_LOGGER, trajectory_stream.str());
 
   traj_generator_ptr_ = std::make_shared<agi::MinJerkTrajectory>(states);
 
