@@ -34,62 +34,42 @@
  */
 #pragma once
 
-/* Standard library */
-#include <memory>
-#include <chrono>
-#include <cstdint>
-#include <functional>
+#include <mutex>
+#include <utility>
+#include <vector>
 
-/* ROS 2 */
-#include <rclcpp/rclcpp.hpp>
-#include <pluginlib/class_loader.hpp>
-#include <std_msgs/msg/string.hpp>
+#include <aerial_robot_model/model/aerial_robot_model.h>
 
-/* Aerial robot packages */
-#include "aerial_robot_model/model/aerial_robot_model_ros.h"
-#include "aerial_robot_estimation/state_estimation.h"
-#include "aerial_robot_navigation/flight_navigation.hpp"
-#include "aerial_robot_control/base/control_base.hpp"
-
-class AerialRobotCore
+class GimbalrotorRobotModel : public aerial_robot_model::RobotModel
 {
 public:
-  AerialRobotCore(rclcpp::Node::SharedPtr node);
-  ~AerialRobotCore();
+  GimbalrotorRobotModel() = default;
+  ~GimbalrotorRobotModel() override = default;
+
+  void initialize(rclcpp::Node::SharedPtr node, bool init_with_rosparam = true, bool verbose = false,
+                  bool fixed_model = false, double fc_f_min_thre = 0.0, double fc_t_min_thre = 0.0,
+                  double epsilon = 10.0) override;
+
+  template <class T> std::vector<T> getLinksRotationFromCog();
+  template <class T> std::vector<T> getThrustCoordRot();
 
 private:
-  bool param_verbose_;
-  double main_rate_;
-  bool warn_main_rate_;
-  double main_rate_warn_tolerance_;
-  int main_rate_warn_throttle_ms_;
-  int main_rate_warn_warmup_count_;
-  int main_rate_warn_count_{ 0 };
-  rclcpp::TimerBase::SharedPtr main_timer_;
+  void updateRobotModelImpl(const KDL::JntArray &joint_positions) override;
 
-  rclcpp::Clock steady_clock_{ RCL_STEADY_TIME };
-  int64_t last_main_time_ns_{ 0 };
-
-  // Node handle
-  rclcpp::Node::SharedPtr node_;
-
-  // Model
-  std::shared_ptr<aerial_robot_model::RobotModelRos> robot_model_ros_;
-
-  // Estimator
-  std::shared_ptr<aerial_robot_estimation::StateEstimator> estimator_;
-
-  // Navigator
-  pluginlib::ClassLoader<aerial_robot_navigation::NavigationBase> navigation_loader_;
-  std::shared_ptr<aerial_robot_navigation::NavigationBase> navigator_;
-
-  // Controller
-  pluginlib::ClassLoader<aerial_robot_control::ControlBase> controller_loader_;
-  std::shared_ptr<aerial_robot_control::ControlBase> controller_;
-
-  // For debug messages
-  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr debug_pub_;
-
-  // Main loop
-  void mainFunc();
+  std::vector<KDL::Rotation> links_rotation_from_cog_;
+  std::vector<KDL::Rotation> thrust_coords_rot_;
+  std::mutex links_rotation_mutex_;
+  std::mutex thrust_rotation_mutex_;
 };
+
+template <> inline std::vector<KDL::Rotation> GimbalrotorRobotModel::getLinksRotationFromCog()
+{
+  std::lock_guard<std::mutex> lock(links_rotation_mutex_);
+  return links_rotation_from_cog_;
+}
+
+template <> inline std::vector<KDL::Rotation> GimbalrotorRobotModel::getThrustCoordRot()
+{
+  std::lock_guard<std::mutex> lock(thrust_rotation_mutex_);
+  return thrust_coords_rot_;
+}

@@ -11,7 +11,7 @@ from launch.substitutions import (
     TextSubstitution,
     EnvironmentVariable,
 )
-from launch.conditions import UnlessCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.event_handlers import OnProcessExit
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackagePrefix
@@ -22,10 +22,26 @@ from ament_index_python.packages import get_package_share_directory
 # ---------------------------------------------------------------------------
 pkg_share = get_package_share_directory("aerial_robot_simulation")
 default_world = os.path.join(pkg_share, "gazebo_model", "world", "empty.world")
+is_wslg = os.environ.get("WSL2_GUI_APPS_ENABLED") == "1"
+default_qt_qpa_platform = os.environ.get("QT_QPA_PLATFORM", "xcb" if is_wslg else "")
+default_mesa_gl_version_override = os.environ.get("MESA_GL_VERSION_OVERRIDE", "4.5" if is_wslg else "")
+default_mesa_glsl_version_override = os.environ.get("MESA_GLSL_VERSION_OVERRIDE", "450" if is_wslg else "")
 _ARGS = [
     ("robot_ns", "hydrus", "Namespace for all robot nodes"),
     ("world_sdf_file", default_world, "Ignition world SDF file path (default: empty world included in this package)"),
     ("headless", "true", "Run without GUI", ["true", "false"]),
+    ("render_engine", "ogre2", "Gazebo render engine", ["ogre2", "ogre"]),
+    ("qt_qpa_platform", default_qt_qpa_platform, "Qt platform plugin used by Gazebo GUI"),
+    (
+        "mesa_gl_version_override",
+        default_mesa_gl_version_override,
+        "MESA_GL_VERSION_OVERRIDE for Gazebo; empty leaves it unset",
+    ),
+    (
+        "mesa_glsl_version_override",
+        default_mesa_glsl_version_override,
+        "MESA_GLSL_VERSION_OVERRIDE for Gazebo; empty leaves it unset",
+    ),
     ("sim_param_path", "", "Path to YAML file with simulation parameters"),
     ("spawn_x", "0.0", "Gazebo spawn X position [m] (sim only)"),
     ("spawn_y", "0.0", "Gazebo spawn Y position [m] (sim only)"),
@@ -48,6 +64,10 @@ def generate_launch_description():
     robot_ns = LaunchConfiguration("robot_ns")
     world = LaunchConfiguration("world_sdf_file")
     headless = LaunchConfiguration("headless")
+    render_engine = LaunchConfiguration("render_engine")
+    qt_qpa_platform = LaunchConfiguration("qt_qpa_platform")
+    mesa_gl_version_override = LaunchConfiguration("mesa_gl_version_override")
+    mesa_glsl_version_override = LaunchConfiguration("mesa_glsl_version_override")
     sim_param_path = LaunchConfiguration("sim_param_path")
     spawn_x = LaunchConfiguration("spawn_x")
     spawn_y = LaunchConfiguration("spawn_y")
@@ -62,6 +82,29 @@ def generate_launch_description():
     set_env = SetEnvironmentVariable(name="DISPLAY", value=os.environ.get("DISPLAY", ""))
     set_xauthority = SetEnvironmentVariable(
         name="XAUTHORITY", value=os.environ.get("XAUTHORITY", os.path.expanduser("~/.Xauthority"))
+    )
+
+    set_qt_qpa_platform = SetEnvironmentVariable(
+        name="QT_QPA_PLATFORM",
+        value=qt_qpa_platform,
+        condition=IfCondition(PythonExpression(["'", headless, "' == 'false' and len('", qt_qpa_platform, "') > 0"])),
+    )
+
+    set_mesa_d3d12_adapter = SetEnvironmentVariable(
+        name="MESA_D3D12_DEFAULT_ADAPTER_NAME",
+        value=EnvironmentVariable("MESA_D3D12_DEFAULT_ADAPTER_NAME", default_value="NVIDIA"),
+    )
+
+    set_mesa_gl_version_override = SetEnvironmentVariable(
+        name="MESA_GL_VERSION_OVERRIDE",
+        value=mesa_gl_version_override,
+        condition=IfCondition(PythonExpression(["len('", mesa_gl_version_override, "') > 0"])),
+    )
+
+    set_mesa_glsl_version_override = SetEnvironmentVariable(
+        name="MESA_GLSL_VERSION_OVERRIDE",
+        value=mesa_glsl_version_override,
+        condition=IfCondition(PythonExpression(["len('", mesa_glsl_version_override, "') > 0"])),
     )
 
     # Gazebo looks for models, worlds, and plugins in GZ_SIM_RESOURCE_PATH
@@ -110,7 +153,18 @@ def generate_launch_description():
     # 3.  Execute Gazebo processes
     # ------------------------------------------------------------------
     ign_server = ExecuteProcess(
-        cmd=["ign", "gazebo", "-r", "-s", "libgazebo_ros_factory.so", "-s", "libgazebo_ros_init.so", world],
+        cmd=[
+            "ign",
+            "gazebo",
+            "--render-engine",
+            render_engine,
+            "-r",
+            "-s",
+            "libgazebo_ros_factory.so",
+            "-s",
+            "libgazebo_ros_init.so",
+            world,
+        ],
         output="screen",
     )
 
@@ -119,6 +173,8 @@ def generate_launch_description():
             "ign",
             "gazebo",
             "-g",
+            "--render-engine",
+            render_engine,
         ],
         condition=UnlessCondition(headless),
         output="screen",
@@ -187,6 +243,10 @@ def generate_launch_description():
 
     ld.add_action(set_env)
     ld.add_action(set_xauthority)
+    ld.add_action(set_qt_qpa_platform)
+    ld.add_action(set_mesa_d3d12_adapter)
+    ld.add_action(set_mesa_gl_version_override)
+    ld.add_action(set_mesa_glsl_version_override)
     ld.add_action(set_gazebo_resource_path)
     ld.add_action(set_gazebo_default_path)
     ld.add_action(set_ignition_resource_path)

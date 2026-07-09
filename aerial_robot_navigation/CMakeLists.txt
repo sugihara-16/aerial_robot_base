@@ -49,6 +49,7 @@ add_library(flight_navigation
   src/trajectory/utils/logger.cpp
   src/trajectory/utils/timer.cpp
 )
+set_target_properties(flight_navigation PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 ament_target_dependencies(flight_navigation
   ${ROS_DEPENDENCIES}

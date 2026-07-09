@@ -3,25 +3,28 @@
 ![uav_intro](images/multilink-all.jpg)
 
 ## Setup
-!!! Warning: You cannot install ROS 1 and ROS 2 on the same machine. Please use a Docker container or remove ROS 1 beforehand.
 ### Ubuntu 22.04
-Clone repository
+#### Install ROS2 Humble from official site
+- https://docs.ros.org/en/humble/Installation.html
+#### Install dependent tools
 ```bash
-git clone https://github.com/ut-dragon-lab/aerial_robot_base
+source /opt/ros/${ROS_DISTRO}/setup.bash
+sudo apt update
+# install python tools
+sudo apt install -y python3-vcstool python3-colcon-common-extensions python3-colcon-clean gdb clang-format
+# install format tools
+pip install pre-commit black
 ```
-Run our prebuild bash script to install ROS 2 Humble and other dependencies
-```bash
-source configure.sh
-```
-Create your workspace
+#### Create your workspace
 ```bash
 mkdir -p ~/ros2/aerial_robot_base_ws/src
 cd ~/ros2/aerial_robot_base_ws
 sudo rosdep init
 rosdep update
 ```
-Install depended repositories
+#### Install repositories
 ```bash
+vcs import src --input https://raw.githubusercontent.com/ut-dragon-lab/aerial_robot_base/master/aerial_robot_base.repos
 vcs import src < src/aerial_robot_base/aerial_robot_${ROS_DISTRO}.repos
 rosdep install -y -r --from-paths src --ignore-src --rosdistro ${ROS_DISTRO}
 ```

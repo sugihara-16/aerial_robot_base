@@ -34,62 +34,42 @@
  */
 #pragma once
 
-/* Standard library */
-#include <memory>
-#include <chrono>
-#include <cstdint>
-#include <functional>
+#include <aerial_robot_navigation/flight_navigation.hpp>
+#include <geometry_msgs/msg/quaternion_stamped.hpp>
+#include <geometry_msgs/msg/vector3_stamped.hpp>
+#include <spinal_msgs/msg/desire_coord.hpp>
+#include <tf2/LinearMath/Quaternion.h>
 
-/* ROS 2 */
-#include <rclcpp/rclcpp.hpp>
-#include <pluginlib/class_loader.hpp>
-#include <std_msgs/msg/string.hpp>
-
-/* Aerial robot packages */
-#include "aerial_robot_model/model/aerial_robot_model_ros.h"
-#include "aerial_robot_estimation/state_estimation.h"
-#include "aerial_robot_navigation/flight_navigation.hpp"
-#include "aerial_robot_control/base/control_base.hpp"
-
-class AerialRobotCore
+namespace aerial_robot_navigation
+{
+class GimbalrotorNavigator : public NavigationBase
 {
 public:
-  AerialRobotCore(rclcpp::Node::SharedPtr node);
-  ~AerialRobotCore();
+  GimbalrotorNavigator();
+  ~GimbalrotorNavigator() override = default;
+
+  void initialize(rclcpp::Node::SharedPtr node, std::shared_ptr<aerial_robot_model::RobotModel> robot_model,
+                  std::shared_ptr<aerial_robot_estimation::StateEstimator> estimator, double loop_du) override;
+
+  void update() override;
 
 private:
-  bool param_verbose_;
-  double main_rate_;
-  bool warn_main_rate_;
-  double main_rate_warn_tolerance_;
-  int main_rate_warn_throttle_ms_;
-  int main_rate_warn_warmup_count_;
-  int main_rate_warn_count_{ 0 };
-  rclcpp::TimerBase::SharedPtr main_timer_;
+  rclcpp::Publisher<spinal_msgs::msg::DesireCoord>::SharedPtr target_baselink_rpy_pub_;
+  rclcpp::Subscription<geometry_msgs::msg::QuaternionStamped>::SharedPtr final_target_baselink_rot_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr final_target_baselink_rpy_sub_;
 
-  rclcpp::Clock steady_clock_{ RCL_STEADY_TIME };
-  int64_t last_main_time_ns_{ 0 };
+  void baselinkRotationProcess();
+  void rosParamInit() override;
+  void targetBaselinkRotCallback(const geometry_msgs::msg::QuaternionStamped::ConstSharedPtr msg);
+  void targetBaselinkRPYCallback(const geometry_msgs::msg::Vector3Stamped::ConstSharedPtr msg);
+  void naviCallback(const aerial_robot_msgs::msg::FlightNav::ConstSharedPtr msg) override;
+  void reset() override;
 
-  // Node handle
-  rclcpp::Node::SharedPtr node_;
-
-  // Model
-  std::shared_ptr<aerial_robot_model::RobotModelRos> robot_model_ros_;
-
-  // Estimator
-  std::shared_ptr<aerial_robot_estimation::StateEstimator> estimator_;
-
-  // Navigator
-  pluginlib::ClassLoader<aerial_robot_navigation::NavigationBase> navigation_loader_;
-  std::shared_ptr<aerial_robot_navigation::NavigationBase> navigator_;
-
-  // Controller
-  pluginlib::ClassLoader<aerial_robot_control::ControlBase> controller_loader_;
-  std::shared_ptr<aerial_robot_control::ControlBase> controller_;
-
-  // For debug messages
-  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr debug_pub_;
-
-  // Main loop
-  void mainFunc();
+  double prev_rotation_stamp_;
+  tf2::Quaternion curr_target_baselink_rot_;
+  tf2::Quaternion final_target_baselink_rot_;
+  bool eq_cog_world_;
+  double baselink_rot_change_thresh_;
+  double baselink_rot_pub_interval_;
 };
+}  // namespace aerial_robot_navigation
